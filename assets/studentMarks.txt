@@ -1,0 +1,9 @@
+5
+6701,John Smith,15,18,16,82
+6702,Jane Doe,20,20,19,95
+6703,Bob Brown,5,8,7,40
+6704,Alice White,12,14,13,65
+6705,Charlie Green,18,17,19,55
+6706,James Kirk,30,11,19,67
+6707,Peter Griffin,5,8,3,42
+6708,Poopy Butthole,6,7,31,41
