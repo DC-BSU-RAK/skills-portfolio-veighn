@@ -1,0 +1,208 @@
+import tkinter as tk
+from tkinter import ttk, simpledialog, messagebox
+import os
+import pygame
+
+
+
+pygame.mixer.init()
+
+# --- FILE SETUP ---
+FILENAME = "studentMarks.txt"
+
+
+
+# --- LOGIC & CALCULATIONS ---
+
+def load_data():
+    
+    students = []
+    try:
+        with open(FILENAME, "r") as f:
+            lines = f.readlines()
+            
+            # Skip the first line (the count) and process the rest
+            for line in lines[1:]:
+                parts = line.strip().split(',')
+                if len(parts) == 6:
+                    s_id = parts[0]
+                    name = parts[1]
+                    # Convert marks to integers
+                    m1, m2, m3 = int(parts[2]), int(parts[3]), int(parts[4])
+                    exam = int(parts[5])
+                    
+                    # --- MATH REQUIREMENTS ---
+                    total_coursework = m1 + m2 + m3 # Out of 60
+                    total_score = total_coursework + exam # Out of 160
+                    percentage = (total_score / 160) * 100
+                    
+                    # Grade Logic
+                    grade = "F"
+                    if percentage >= 70: grade = "A"
+                    elif percentage >= 60: grade = "B"
+                    elif percentage >= 50: grade = "C"
+                    elif percentage >= 40: grade = "D"
+                    
+                    # Add processed data to list
+                    # We format percentage to 1 decimal place
+                    students.append({
+                        "id": s_id,
+                        "name": name,
+                        "coursework": total_coursework,
+                        "exam": exam,
+                        "percent": round(percentage, 1),
+                        "grade": grade
+                    })
+        return students
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not read file: {e}")
+        return []
+
+# --- GUI FUNCTIONS ---
+
+def view_all():
+    
+    clear_tree()
+    data = load_data()
+    
+    total_percent = 0
+    
+    for s in data:
+        insert_student(s)
+        total_percent += s['percent']
+        
+    # Summary Logic
+    count = len(data)
+    if count > 0:
+        avg = total_percent / count
+        summary_label.config(text=f"Total Students: {count} | Class Average: {avg:.1f}%")
+    else:
+        summary_label.config(text="No students found.")
+
+def view_individual():
+    
+    query = simpledialog.askstring("Search", "Enter Student ID or Name:")
+    if not query:
+        return
+    
+    clear_tree()
+    data = load_data()
+    found = False
+    
+    query = query.lower()
+    
+    for s in data:
+        # Check if query matches ID or Name (case insensitive)
+        if query in s['id'] or query in s['name'].lower():
+            insert_student(s)
+            found = True
+            
+    if not found:
+        messagebox.showinfo("Result", "No student found.")
+        summary_label.config(text="")
+    else:
+        summary_label.config(text="Search Result")
+
+def show_highest():
+    """Requirement 3: Highest Scorer"""
+    clear_tree()
+    data = load_data()
+    if not data: return
+    
+    # Python magic to find the max based on 'percent' key
+    best_student = max(data, key=lambda x: x['percent'])
+    
+    insert_student(best_student)
+    summary_label.config(text=f"Highest Scorer: {best_student['name']}")
+
+def show_lowest():
+   
+    clear_tree()
+    data = load_data()
+    if not data: return
+    
+    # Python magic to find the min
+    worst_student = min(data, key=lambda x: x['percent'])
+    
+    insert_student(worst_student)
+    summary_label.config(text=f"Lowest Scorer: {worst_student['name']}")
+
+# --- GUI HELPERS ---
+
+def clear_tree():
+    
+    for item in tree.get_children():
+        tree.delete(item)
+
+def insert_student(s):
+    
+    # Values match the columns: ID, Name, C.Work, Exam, %, Grade
+    tree.insert("", "end", values=(s['id'], s['name'], s['coursework'], s['exam'], f"{s['percent']}%", s['grade']))
+
+# --- MAIN WINDOW SETUP ---
+
+root = tk.Tk()
+root.title("Student Manager")
+root.geometry("800x500")
+root.config(bg="#f0f0f0")
+
+try:
+    pygame.mixer.music.load("sans.mp3") 
+    pygame.mixer.music.play(-1) 
+    print("Music started!")
+except pygame.error:
+    print("Music file not found. Application will run without sound.")
+
+# 1. Header
+header = tk.Label(root, text="Student Data Manager", font=("Helvetica", 24, "bold"), bg="#f0f0f0", fg="#333")
+header.pack(pady=10)
+
+# 2. Buttons Frame
+btn_frame = tk.Frame(root, bg="#f0f0f0")
+btn_frame.pack(pady=10)
+
+# Button Styles
+btn_config = {"font": ("Arial", 11), "width": 18, "bg": "#007acc", "fg": "white"}
+
+b1 = tk.Button(btn_frame, text="View All Records", command=view_all, **btn_config)
+b1.grid(row=0, column=0, padx=5)
+
+b2 = tk.Button(btn_frame, text="Find Student", command=view_individual, **btn_config)
+b2.grid(row=0, column=1, padx=5)
+
+b3 = tk.Button(btn_frame, text="Highest Score", command=show_highest, **btn_config)
+b3.grid(row=0, column=2, padx=5)
+
+b4 = tk.Button(btn_frame, text="Lowest Score", command=show_lowest, **btn_config)
+b4.grid(row=0, column=3, padx=5)
+
+# 3. The Treeview (The Excel-like Table)
+columns = ("id", "name", "cw", "exam", "pct", "grade")
+tree = ttk.Treeview(root, columns=columns, show="headings", height=10)
+
+# Define Headings
+tree.heading("id", text="Student ID")
+tree.heading("name", text="Name")
+tree.heading("cw", text="Coursework (60)")
+tree.heading("exam", text="Exam (100)")
+tree.heading("pct", text="Overall %")
+tree.heading("grade", text="Grade")
+
+# Define Columns Widths
+tree.column("id", width=80, anchor="center")
+tree.column("name", width=200)
+tree.column("cw", width=100, anchor="center")
+tree.column("exam", width=100, anchor="center")
+tree.column("pct", width=80, anchor="center")
+tree.column("grade", width=60, anchor="center")
+
+tree.pack(pady=10, padx=20, fill="x")
+
+# 4. Summary Label (Footer)
+summary_label = tk.Label(root, text="Ready to load data...", font=("Arial", 12, "italic"), bg="#f0f0f0", fg="#555")
+summary_label.pack(pady=10)
+
+# Start with data loaded
+view_all()
+
+root.mainloop()
