@@ -1,0 +1,215 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+import os
+import pygame
+from PIL import Image, ImageTk
+
+# --- Setup Main Window ---
+root = tk.Tk()
+root.title("Alexa Tell Me A Joke")
+root.geometry("500x500")
+root.resizable(False, False)
+
+pygame.mixer.init()
+
+load_bg = Image.open("mikubackground.jpg").resize((500, 500))
+bg_photo = ImageTk.PhotoImage(load_bg)
+
+canvas = tk.Canvas(root, width=500, height=500, bg="#2c3e50", highlightthickness=0)
+canvas.pack(fill="both", expand=True)
+
+# --- Global Variables ---
+jokes_list = []
+current_joke = None
+FILE_NAME = "randomJokes.txt"
+
+# --- Helper Functions ---
+
+def clear_canvas():
+    
+    canvas.delete("all")
+    canvas.create_image(0, 0, image=bg_photo, anchor="nw")
+
+def get_button(text, command, color="#3498db"):
+    """Helper to create consistent buttons"""
+    return tk.Button(root, text=text, font=("Arial", 12, "bold"), 
+                     bg=color, fg="white", activebackground="#2980b9", 
+                     width=15, command=command)
+
+# --- File Logic (Reading & Writing) ---
+
+def load_jokes():
+    
+    if not os.path.exists(FILE_NAME):
+        # Create the file if it doesn't exist
+        with open(FILE_NAME, "w") as f:
+            f.write("Why did the chicken cross the road?To get to the other side.\n")
+    
+    loaded_data = []
+    try:
+        with open(FILE_NAME, "r") as file:
+            for line in file:
+                line = line.strip()
+                if "?" in line:
+                    parts = line.split("?", 1)
+                    loaded_data.append((parts[0] + "?", parts[1]))
+        return loaded_data
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not load jokes: {e}")
+        return []
+
+def save_new_joke(setup, punchline):
+    
+    try:
+        with open(FILE_NAME, "a") as file:
+            file.write(f"\n{setup}?{punchline}")
+        return True
+    except Exception as e:
+        return False
+
+# Load jokes immediately on start
+jokes_list = load_jokes()
+
+# --- Screens ---
+
+def show_menu():
+    pygame.mixer.music.stop()
+
+    clear_canvas()
+    
+    # Title
+    canvas.create_text(250, 100, text="Alexa Tell Me A Joke", font=("Arial", 36, "bold"), fill="black")
+   
+
+    # Buttons 
+    # Row 1
+    btn_play = get_button("Play", show_play_screen, "#2ecc71") # Green
+    canvas.create_window(160, 350, window=btn_play)
+
+    btn_create = get_button("Create Joke", show_create_screen, "#e67e22") # Orange
+    canvas.create_window(340, 350, window=btn_create)
+
+    # Row 2
+    btn_inst = get_button("Instructions", show_instructions, "#3498db") # Blue
+    canvas.create_window(160, 410, window=btn_inst)
+
+    btn_exit = get_button("Exit", root.destroy, "#e74c3c") # Red
+    canvas.create_window(340, 410, window=btn_exit)
+
+def show_instructions():
+    clear_canvas()
+    
+    text = (
+        "WELCOME TO ALEXA JOKES\n\n"
+        "1. Press \"PLAY\" to hear jokes.\n"
+
+        "2. Press \"NEXT JOKE\" to get a random one.\n"
+
+        "3. Press \"SHOW PUNCHLINE\" to see the answer.\n"
+
+        "4. Use \"CREATE JOKE\" to add your own!\n"
+    )
+    
+    canvas.create_text(250, 50, text="Instructions", font=("Arial", 28, "bold"), fill="black")
+    canvas.create_text(250, 200, text=text, font=("Arial", 12, "bold"), fill="black", justify="center")
+    
+    btn_back = get_button("Back", show_menu)
+    canvas.create_window(250, 400, window=btn_back)
+
+def show_create_screen():
+    clear_canvas()
+    global setup_entry, punch_entry
+    
+    canvas.create_text(250, 50, text="Create a Joke", font=("Arial", 28, "bold"), fill="black")
+    
+    # Setup Input
+    canvas.create_text(250, 120, text="Setup (The Question):", font=("Arial", 12, "bold"), fill="black")
+    setup_entry = tk.Entry(root, font=("Arial", 12), width=40)
+    canvas.create_window(250, 150, window=setup_entry)
+    
+    # Punchline Input
+    canvas.create_text(250, 220, text="Punchline (The Answer):", font=("Arial", 12, "bold"), fill="black")
+    punch_entry = tk.Entry(root, font=("Arial", 12), width=40)
+    canvas.create_window(250, 250, window=punch_entry)
+    
+    # Save Button logic
+    def perform_save():
+        s = setup_entry.get().strip()
+        p = punch_entry.get().strip()
+        
+        if s == "" or p == "":
+            messagebox.showwarning("Warning", "Both fields must be filled!")
+            return
+            
+        if save_new_joke(s, p):
+            messagebox.showinfo("Success", "Joke Saved!")
+            # Reload the list so the new joke appears in the game immediately
+            global jokes_list
+            jokes_list = load_jokes()
+            # Clear boxes
+            setup_entry.delete(0, tk.END)
+            punch_entry.delete(0, tk.END)
+        else:
+            messagebox.showerror("Error", "Could not save joke.")
+
+    btn_save = get_button("Save Joke", perform_save, "#2ecc71")
+    canvas.create_window(250, 320, window=btn_save)
+    
+    btn_back = get_button("Back", show_menu, "#e74c3c")
+    canvas.create_window(250, 380, window=btn_back)
+
+def show_play_screen():
+
+    
+
+    try:
+        pygame.mixer.music.load("sans.mp3") 
+        pygame.mixer.music.play(-1) 
+    except pygame.error:
+        print("Music file not found!")
+    
+
+
+    clear_canvas()
+    
+    canvas.create_text(250, 50, text="Alexa Joke Mode", font=("Arial", 28, "bold"), fill="black")
+    
+    # Placeholder for the Setup Text
+    
+    canvas.create_text(250, 150, text="Ready?", font=("Arial", 16, "bold"), fill="#000000", tags="setup_text", width=400, justify="center")
+    
+    # Placeholder for Punchline
+    canvas.create_text(250, 220, text="", font=("Arial", 16, "italic"), fill="black", tags="punch_text", width=400, justify="center")
+
+    # Game Logic Functions
+    def next_joke():
+        global current_joke
+        if not jokes_list:
+            canvas.itemconfigure("setup_text", text="No jokes found in file!")
+            return
+            
+        current_joke = random.choice(jokes_list)
+        # Update text on canvas
+        canvas.itemconfigure("setup_text", text=current_joke[0])
+        canvas.itemconfigure("punch_text", text="") # Hide punchline
+
+    def reveal_punchline():
+        if current_joke:
+            canvas.itemconfigure("punch_text", text=current_joke[1])
+        else:
+            canvas.itemconfigure("punch_text", text="Click 'Next Joke' first!")
+
+    # Buttons
+    btn_next = get_button("Next Joke", next_joke, "#f39c12")
+    canvas.create_window(150, 350, window=btn_next)
+    
+    btn_punch = get_button("Show Punchline", reveal_punchline, "#8e44ad")
+    canvas.create_window(350, 350, window=btn_punch)
+    
+    btn_back = get_button("Back to Menu", show_menu, "#95a5a6")
+    canvas.create_window(250, 420, window=btn_back)
+
+# --- Start App ---
+show_menu()
+root.mainloop()
