@@ -1,0 +1,249 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+import pygame
+
+
+root = tk.Tk()
+root.title("math quiz game ")
+root.geometry("500x500")
+root.resizable(False, False)
+
+pygame.mixer.init()
+
+
+
+canvas = tk.Canvas(root, width=500, height=500, bg="#2c3e50", highlightthickness=0)
+canvas.pack(fill="both", expand=True)
+
+# --- Global Variables ---
+score = 0
+question_number = 1
+attempt = 1
+difficulty = "Easy"
+user_name = "Player"
+num1 = 0
+num2 = 0
+operator = "+"
+
+# --- Helper Functions ---
+
+def clear_canvas():
+   
+    canvas.delete("all")
+
+def get_button_style(text, command):
+   
+    return tk.Button(root, text=text, font=("Arial", 12, "bold"), width=15, 
+                     command=command, bg="#f1c40f", fg="black", activebackground="#f39c12")
+
+# --- Logic Functions ---
+
+def generate_numbers(diff):
+    if diff == "Easy":
+        return random.randint(1, 10)
+    elif diff == "Moderate":
+        return random.randint(10, 99)
+    elif diff == "Advanced":
+        return random.randint(100, 999)
+    return 0
+
+def get_operator():
+    return random.choice(['+', '-'])
+
+# --- Screens ---
+
+def show_menu():
+    pygame.mixer.music.stop()
+    clear_canvas()
+    root.unbind('<Return>') 
+    
+    # Title
+    canvas.create_text(250, 100, text="Math Quiz Game", font=("Arial", 30, "bold"), fill="white")
+    
+    # Buttons 
+    play_btn = get_button_style("Play", show_difficulty)
+    canvas.create_window(250, 200, window=play_btn)
+    
+    inst_btn = get_button_style("Instructions", show_instructions)
+    canvas.create_window(250, 260, window=inst_btn)
+    
+    exit_btn = get_button_style("Exit", root.destroy)
+    canvas.create_window(250, 320, window=exit_btn)
+
+def show_instructions():
+    clear_canvas()
+    
+    # Text
+    instructions_text = (
+        "WELCOME !\n\n"
+        "1. Select your difficulty.\n"
+        "2. Answer 10 questions.\n"
+        "3. You have 3 attempts per question.\n"
+        "4. First try = 10 points, Seconnd = 5 points, Third = 0 points."
+    )
+    
+    canvas.create_text(250, 50, text="Instructions", font=("Arial", 28, "bold"), fill="white")
+    canvas.create_text(250, 200, text=instructions_text, font=("Arial", 12), fill="#ecf0f1", justify="left")
+    
+    back_btn = get_button_style("Back", show_menu)
+    canvas.create_window(250, 350, window=back_btn)
+
+def show_difficulty():
+    try:
+       
+        pygame.mixer.music.stop() 
+        
+        pygame.mixer.music.load("sans.mp3") 
+        
+        pygame.mixer.music.play(-1) 
+    except pygame.error:
+        print("Music file not found!")
+
+    clear_canvas()
+    global name_entry
+    
+    canvas.create_text(250, 50, text="Enter Name:", font=("Arial", 16, "bold"), fill="white")
+    
+    name_entry = tk.Entry(root, font=("Arial", 14), justify="center")
+    canvas.create_window(250, 90, window=name_entry)
+    name_entry.focus()
+    
+    canvas.create_text(250, 160, text="Select Difficulty", font=("Arial", 22, "bold"), fill="white")
+    
+    # Difficulty Buttons
+    btn_easy = get_button_style("Easy", lambda: start_game("Easy"))
+    canvas.create_window(250, 220, window=btn_easy)
+    
+    btn_mod = get_button_style("Moderate", lambda: start_game("Moderate"))
+    canvas.create_window(250, 280, window=btn_mod)
+    
+    btn_adv = get_button_style("Advanced", lambda: start_game("Advanced"))
+    canvas.create_window(250, 340, window=btn_adv)
+    
+    btn_back = get_button_style("Back", show_menu)
+    canvas.create_window(250, 420, window=btn_back)
+
+# --- Game Loop ---
+
+def start_game(selected_diff):
+    global score, question_number, attempt, difficulty, user_name
+    
+    # Reset variables
+    score = 0
+    question_number = 1
+    attempt = 1
+    difficulty = selected_diff
+    
+    # Get Name
+    user_name = name_entry.get()
+    if user_name.strip() == "":
+        user_name = "Player 1"
+        
+    display_problem()
+
+def display_problem():
+    clear_canvas()
+    global num1, num2, operator, answer_entry
+    
+    # Logic: Get new numbers
+    num1 = generate_numbers(difficulty)
+    num2 = generate_numbers(difficulty)
+    operator = get_operator()
+    
+    # UI Elements
+    canvas.create_text(250, 50, text=f"Question {question_number}/10", font=("Arial", 20, "bold"), fill="white")
+    canvas.create_text(250, 90, text=f"Score: {score}", font=("Arial", 14), fill="#f1c40f")
+    
+    # The Equation
+    canvas.create_text(250, 180, text=f"{num1} {operator} {num2} =", font=("Arial", 36, "bold"), fill="white")
+    
+    # Input
+    answer_entry = tk.Entry(root, font=("Arial", 18), justify="center", width=10)
+    canvas.create_window(250, 250, window=answer_entry)
+    answer_entry.focus()
+    
+    # Submit Button
+    submit_btn = get_button_style("Submit", check_answer)
+    canvas.create_window(250, 320, window=submit_btn)
+
+    btn_back = get_button_style("Back", show_menu)
+    canvas.create_window(250, 420, window=btn_back)
+    
+    # Bind Enter Key
+    root.bind('<Return>', lambda event: check_answer())
+
+def check_answer():
+    global score, attempt, question_number
+    
+    user_input = answer_entry.get()
+    
+    # Validation
+    try:
+        user_ans = int(user_input)
+    except ValueError:
+        messagebox.showerror("Error", "Please enter a valid number")
+        return
+
+    # Calculate real answer
+    if operator == "+":
+        real_ans = num1 + num2
+    else:
+        real_ans = num1 - num2
+        
+    # Check Logic
+    if user_ans == real_ans:
+        # Correct!
+        points = 0
+        if attempt == 1: points = 10
+        elif attempt == 2: points = 5
+        
+        score += points
+        messagebox.showinfo("Correct!", f"You got it! +{points} points.")
+        
+        question_number += 1
+        attempt = 1 # Reset attempt for next question
+        
+    else:
+        # Wrong
+        if attempt < 3:
+            attempt += 1
+            messagebox.showwarning("Wrong", f"Try Again! (Attempt {attempt}/3)")
+            answer_entry.delete(0, tk.END)
+            return # Exit function so we don't go to next question
+        else:
+            messagebox.showerror("Failed", f"Out of attempts! The answer was {real_ans}")
+            question_number += 1
+            attempt = 1
+
+    # Check if game over
+    if question_number > 10:
+        show_results()
+    else:
+        display_problem()
+
+def show_results():
+    clear_canvas()
+    root.unbind('<Return>')
+    
+    # Grading
+    grade = "F"
+    if score >= 90: grade = "A+"
+    elif score >= 80: grade = "A"
+    elif score >= 70: grade = "B"
+    elif score >= 60: grade = "C"
+    elif score >= 50: grade = "D"
+    
+    canvas.create_text(250, 100, text=f"Game Over, {user_name}!", font=("Arial", 22, "bold"), fill="white")
+    canvas.create_text(250, 180, text=f"Final Score: {score}/100", font=("Arial", 30, "bold"), fill="#f1c40f")
+    canvas.create_text(250, 250, text=f"Grade: {grade}", font=("Arial", 40, "bold"), fill="white")
+    
+    btn_again = get_button_style("Play Again", show_difficulty)
+    canvas.create_window(250, 350, window=btn_again)
+    
+    btn_exit = get_button_style("Exit", root.destroy)
+    canvas.create_window(250, 410, window=btn_exit)
+
+# --- Start App ---
+show_menu()
+root.mainloop()
